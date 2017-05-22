@@ -15,18 +15,25 @@ import time
 import yaml
 
 
-def writeOutput(WASAPI_resp):
-    # Substitute proper data / object store here
-    ts = time.time()
-    st = datetime.datetime.fromtimestamp(ts).strftime('%Y%m%d%H%M%S.txt')
-    output = 'sample_json/' + st
-    with open(output, 'w') as fout:
-        json.dump(WASAPI_resp, fout)
+class WASAPIFile:
+    """Class to handle WASAPI file
 
 
-def getWebData(WASAPI_endpoint, auth, date_before=None, date_after=None,
-               job_id=None, coll_id=None):
-    # Subsitute SPARK Class here, replace simple Requests queries
+def generateFileList(WASAPI_resp, files):
+    """Create a Python list of file dictionaries from WASAPI."""
+    if 'files' in WASAPI_resp:
+        if files:
+            files.extend(WASAPI_resp['files'])
+        else:
+            files = WASAPI_resp['files']
+    else:
+        print('Error: no Files in WASAPI response.')
+        exit()
+    return(files)
+
+
+def getWebData(WASAPI_endpoint, auth, files=None, date_before=None,
+               date_after=None, job_id=None, coll_id=None):
     if 'webdata' not in WASAPI_endpoint:
         WASAPI_URL = WASAPI_endpoint + 'webdata?format=json'
     else:
@@ -46,12 +53,15 @@ def getWebData(WASAPI_endpoint, auth, date_before=None, date_after=None,
 
     if resp.status_code == requests.codes.ok:
         ait_data = resp.json()
-        writeOutput(ait_data['results'])
+        files = generateFileList(ait_data, files)
         if 'next' in ait_data:
             if ait_data['next']:
-                getWebData(ait_data['next'], auth)
+                getWebData(ait_data['next'], auth, files)
     else:
         print("Error with URL.")
+        exit()
+    print(len(files))
+    return(files)
 
 
 def authenticate(username, password):
